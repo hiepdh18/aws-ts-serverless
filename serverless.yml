@@ -1,0 +1,60 @@
+service: serverlessSetup
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  region: us-east-1
+
+# functions
+functions:
+  hello:
+    handler: src/functions/hello.handler
+    events: # The events that trigger this function
+      - http: 
+          path: serverlessSetup/hello
+          method: get
+  goodbye:
+    handler: src/functions/goodbye.handler
+    events:
+      - http: 
+          path: serverlessSetup/goodbye
+          method: post
+  question:
+    handler: src/functions/question.handler
+    dependsOn: 
+      - SNSQuestionEvent
+    events:
+      - sns:
+          arn: !Ref SNSQuestionEvent
+          topicName: question-event
+  calculate:
+    handler: src/functions/calculate.handler
+    dependsOn: 
+      - SQSCalculate
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - SQSCalculate
+              - Arn
+
+# Serverless plugins
+plugins:
+  - serverless-plugin-typescript
+  - serverless-offline
+
+# Resources your functions use
+resources:
+  Resources:
+    # SNS Topics
+    SNSQuestionEvent:
+      Type: AWS::SNS::Topic
+      Properties:
+        DisplayName: Question Event Topic
+        TopicName: question-event
+    # SQS
+    SQSCalculate:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: sqs-queue-calculate.fifo
+        FifoQueue: true
